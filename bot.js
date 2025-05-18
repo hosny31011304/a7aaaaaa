@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const https = require('https');
 
 const MAX_NAME_LENGTH = 18;
-const MAX_PARALLEL_BOTS = 500; // الحد الأقصى للبوتات المتوازية في كل مرة
+const MAX_PARALLEL_BOTS = 5000; // الحد الأقصى للبوتات المتوازية في كل مرة
 
 const charToHex = {
     " ": "0020",

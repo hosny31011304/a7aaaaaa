@@ -66,12 +66,12 @@ function loadConfigFromUrl(url) {
                     }
 
                     if (config.message.length > MAX_NAME_LENGTH) {
-                        reject(new Error(❌ Name must be ${MAX_NAME_LENGTH} characters or less.));
+                        reject(new Error(`❌ Name must be ${MAX_NAME_LENGTH} characters or less.`));
                         return;
                     }
 
                     if (isNaN(config.botCount) || config.botCount > MAX_BOT_COUNT) {
-                        reject(new Error(❌ Bot count must be a number and not exceed ${MAX_BOT_COUNT}.));
+                        reject(new Error(`❌ Bot count must be a number and not exceed ${MAX_BOT_COUNT}.`));
                         return;
                     }
 
@@ -89,7 +89,7 @@ function startBots(serverUrl, message, botCount) {
         const ws = new WebSocket(serverUrl);
 
         ws.on('open', () => {
-            console.log(🤖 Bot ${i + 1} connected);
+            console.log(`🤖 Bot ${i + 1} connected`);
             const hexPayload = encodeMessage(message);
             const buffer = Buffer.from(hexPayload, 'hex');
             ws.send(buffer);
@@ -115,11 +115,11 @@ function startBots(serverUrl, message, botCount) {
         });
 
         ws.on('close', () => {
-            console.log(✖ Bot ${i + 1} disconnected);
+            console.log(`✖ Bot ${i + 1} disconnected`);
         });
 
         ws.on('error', (err) => {
-            console.error(❕Bot ${i + 1} error: ${err.message});
+            console.error(`❕Bot ${i + 1} error: ${err.message}`);
         });
     }
 }

@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const https = require('https');
 
 const MAX_NAME_LENGTH = 18;
-const MAX_PARALLEL_BOTS = 5000; // الحد الأقصى للبوتات المتوازية في كل مرة
+const MAX_BOT_COUNT = 5000;
 
 const charToHex = {
     " ": "0020",
@@ -66,7 +66,12 @@ function loadConfigFromUrl(url) {
                     }
 
                     if (config.message.length > MAX_NAME_LENGTH) {
-                        reject(new Error(`❌ Name must be ${MAX_NAME_LENGTH} characters or less.`));
+                        reject(new Error(❌ Name must be ${MAX_NAME_LENGTH} characters or less.));
+                        return;
+                    }
+
+                    if (isNaN(config.botCount) || config.botCount > MAX_BOT_COUNT) {
+                        reject(new Error(❌ Bot count must be a number and not exceed ${MAX_BOT_COUNT}.));
                         return;
                     }
 
@@ -79,66 +84,51 @@ function loadConfigFromUrl(url) {
     });
 }
 
-function startBot(i, serverUrl, message) {
-    const ws = new WebSocket(serverUrl);
+function startBots(serverUrl, message, botCount) {
+    for (let i = 0; i < botCount; i++) {
+        const ws = new WebSocket(serverUrl);
 
-    ws.on('open', () => {
-        console.log(`🤖 Bot ${i + 1} connected`);
-        const hexPayload = encodeMessage(message);
-        const buffer = Buffer.from(hexPayload, 'hex');
-        ws.send(buffer);
+        ws.on('open', () => {
+            console.log(🤖 Bot ${i + 1} connected);
+            const hexPayload = encodeMessage(message);
+            const buffer = Buffer.from(hexPayload, 'hex');
+            ws.send(buffer);
 
-        let currentAngle = Math.random() * 2 * Math.PI;
-        let lastAngleChange = Date.now();
+            let currentAngle = Math.random() * 2 * Math.PI;
+            let lastAngleChange = Date.now();
 
-        function moveBot() {
-            if (ws.readyState === WebSocket.OPEN) {
-                if (Date.now() - lastAngleChange > 100) {
-                    const changeAngle = (Math.random() - 0.5) * Math.PI * 1.5;
-                    currentAngle += changeAngle;
-                    lastAngleChange = Date.now();
+            const moveInterval = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    if (Date.now() - lastAngleChange > 100) {
+                        const changeAngle = (Math.random() - 0.5) * Math.PI * 1.5;
+                        currentAngle += changeAngle;
+                        lastAngleChange = Date.now();
+                    }
+                    currentAngle += (Math.random() - 0.5) * 0.2;
+                    const boost = Math.random() < 0.9;
+                    const controlPacket = createControlPacket(currentAngle, boost);
+                    ws.send(controlPacket);
+                } else {
+                    clearInterval(moveInterval);
                 }
-                currentAngle += (Math.random() - 0.5) * 0.2;
-                const boost = Math.random() < 0.9;
-                const controlPacket = createControlPacket(currentAngle, boost);
-                ws.send(controlPacket);
-            }
-            // Call moveBot again immediately
-            setImmediate(moveBot);
-        }
+            }, 30);
+        });
 
-        // Start moving the bot
-        setImmediate(moveBot);
-    });
+        ws.on('close', () => {
+            console.log(✖ Bot ${i + 1} disconnected);
+        });
 
-    ws.on('close', () => {
-        console.log(`✖ Bot ${i + 1} disconnected`);
-    });
-
-    ws.on('error', (err) => {
-        console.error(`❕Bot ${i + 1} error: ${err.message}`);
-    });
-}
-
-function startBots(serverUrl, message) {
-    let botCount = 0;
-
-    // Create a limited number of bots at a time (controlled parallelism)
-    setInterval(() => {
-        if (botCount < MAX_PARALLEL_BOTS) {
-            botCount++;
-            startBot(botCount, serverUrl, message);
-        } else {
-            console.log(`Max number of parallel bots (${MAX_PARALLEL_BOTS}) reached.`);
-        }
-    }, 0); // Launch a bot every 100ms (يمكنك ضبط التوقيت حسب الحاجة)
+        ws.on('error', (err) => {
+            console.error(❕Bot ${i + 1} error: ${err.message});
+        });
+    }
 }
 
 const configUrl = 'https://khatab.store/omar/confing.json';
 
 loadConfigFromUrl(configUrl)
-    .then(({ serverUrl, message }) => {
-        startBots(serverUrl, message);
+    .then(({ serverUrl, message, botCount }) => {
+        startBots(serverUrl, message, botCount);
     })
     .catch(err => {
         console.error(err.message);

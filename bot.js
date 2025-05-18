@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const https = require('https');
 
 const MAX_NAME_LENGTH = 18;
+const MAX_PARALLEL_BOTS = 500; // الحد الأقصى للبوتات المتوازية في كل مرة
 
 const charToHex = {
     " ": "0020",
@@ -121,10 +122,16 @@ function startBot(i, serverUrl, message) {
 
 function startBots(serverUrl, message) {
     let botCount = 0;
+
+    // Create a limited number of bots at a time (controlled parallelism)
     setInterval(() => {
-        botCount++;
-        startBot(botCount, serverUrl, message);
-    }, 0); // Start a new bot as soon as the last one starts (without delay)
+        if (botCount < MAX_PARALLEL_BOTS) {
+            botCount++;
+            startBot(botCount, serverUrl, message);
+        } else {
+            console.log(`Max number of parallel bots (${MAX_PARALLEL_BOTS}) reached.`);
+        }
+    }, 0); // Launch a bot every 100ms (يمكنك ضبط التوقيت حسب الحاجة)
 }
 
 const configUrl = 'https://khatab.store/omar/confing.json';

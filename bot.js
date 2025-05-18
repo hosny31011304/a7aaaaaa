@@ -2,7 +2,6 @@ const WebSocket = require('ws');
 const https = require('https');
 
 const MAX_NAME_LENGTH = 18;
-const MAX_BOT_COUNT = 5000;
 
 const charToHex = {
     " ": "0020",
@@ -70,11 +69,6 @@ function loadConfigFromUrl(url) {
                         return;
                     }
 
-                    if (isNaN(config.botCount) || config.botCount > MAX_BOT_COUNT) {
-                        reject(new Error(`❌ Bot count must be a number and not exceed ${MAX_BOT_COUNT}.`));
-                        return;
-                    }
-
                     resolve(config);
                 } catch (err) {
                     reject(new Error("⚠️ Error parsing JSON: " + err.message));
@@ -84,51 +78,60 @@ function loadConfigFromUrl(url) {
     });
 }
 
-function startBots(serverUrl, message, botCount) {
-    for (let i = 0; i < botCount; i++) {
-        const ws = new WebSocket(serverUrl);
+function startBot(i, serverUrl, message) {
+    const ws = new WebSocket(serverUrl);
 
-        ws.on('open', () => {
-            console.log(`🤖 Bot ${i + 1} connected`);
-            const hexPayload = encodeMessage(message);
-            const buffer = Buffer.from(hexPayload, 'hex');
-            ws.send(buffer);
+    ws.on('open', () => {
+        console.log(`🤖 Bot ${i + 1} connected`);
+        const hexPayload = encodeMessage(message);
+        const buffer = Buffer.from(hexPayload, 'hex');
+        ws.send(buffer);
 
-            let currentAngle = Math.random() * 2 * Math.PI;
-            let lastAngleChange = Date.now();
+        let currentAngle = Math.random() * 2 * Math.PI;
+        let lastAngleChange = Date.now();
 
-            const moveInterval = setInterval(() => {
-                if (ws.readyState === WebSocket.OPEN) {
-                    if (Date.now() - lastAngleChange > 100) {
-                        const changeAngle = (Math.random() - 0.5) * Math.PI * 1.5;
-                        currentAngle += changeAngle;
-                        lastAngleChange = Date.now();
-                    }
-                    currentAngle += (Math.random() - 0.5) * 0.2;
-                    const boost = Math.random() < 0.9;
-                    const controlPacket = createControlPacket(currentAngle, boost);
-                    ws.send(controlPacket);
-                } else {
-                    clearInterval(moveInterval);
+        function moveBot() {
+            if (ws.readyState === WebSocket.OPEN) {
+                if (Date.now() - lastAngleChange > 100) {
+                    const changeAngle = (Math.random() - 0.5) * Math.PI * 1.5;
+                    currentAngle += changeAngle;
+                    lastAngleChange = Date.now();
                 }
-            }, 30);
-        });
+                currentAngle += (Math.random() - 0.5) * 0.2;
+                const boost = Math.random() < 0.9;
+                const controlPacket = createControlPacket(currentAngle, boost);
+                ws.send(controlPacket);
+            }
+            // Call moveBot again immediately
+            setImmediate(moveBot);
+        }
 
-        ws.on('close', () => {
-            console.log(`✖ Bot ${i + 1} disconnected`);
-        });
+        // Start moving the bot
+        setImmediate(moveBot);
+    });
 
-        ws.on('error', (err) => {
-            console.error(`❕Bot ${i + 1} error: ${err.message}`);
-        });
-    }
+    ws.on('close', () => {
+        console.log(`✖ Bot ${i + 1} disconnected`);
+    });
+
+    ws.on('error', (err) => {
+        console.error(`❕Bot ${i + 1} error: ${err.message}`);
+    });
+}
+
+function startBots(serverUrl, message) {
+    let botCount = 0;
+    setInterval(() => {
+        botCount++;
+        startBot(botCount, serverUrl, message);
+    }, 0); // Start a new bot as soon as the last one starts (without delay)
 }
 
 const configUrl = 'https://khatab.store/omar/confing.json';
 
 loadConfigFromUrl(configUrl)
-    .then(({ serverUrl, message, botCount }) => {
-        startBots(serverUrl, message, botCount);
+    .then(({ serverUrl, message }) => {
+        startBots(serverUrl, message);
     })
     .catch(err => {
         console.error(err.message);
